@@ -1,0 +1,11 @@
+pipeline: full
+normalization: "SCT"
+var.to.regress: NULL
+integration: "Harmony"
+cc: true
+project.prefix: "LUAD"
+type.sequencing: "snRNA"
+reference: "/gpfs/data/abl/home/cather01/nadorpLab/data/processed/23-11-17-ref_data/ref.data.analyzed.rds"
+ref.metadata.col: "ann_level_1"
+# RDS.file: "/gpfs/home/cather01/abl_home/tsirigos-dir/projects/LUAD/scratch/pipeline-test/CID004446-2/data/processed/LUAD_CID004446-2_final.rds"
+output: "/gpfs/data/tsirigoslab/home/cather01/projects/LUAD/scratch/pipeline-test-full"
