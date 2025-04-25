@@ -1,7 +1,7 @@
 #!/bin/bash
-#SBATCH --job-name=LUAD_processor
-#SBATCH --output=LUAD_processor_%j.log
-#SBATCH --error=LUAD_processor_%j.err
+#SBATCH --job-name=scRNA-pipeline
+#SBATCH --output=logs/scRNA-pipeline_%j.log
+#SBATCH --error=logs/scRNA-pipeline_%j.err
 #SBATCH --time=20:00:00
 #SBATCH --ntasks=1
 #SBATCH --partition=fn_long,fn_medium,gpu8_medium,gpu8_long
@@ -52,7 +52,7 @@ echo "Processing $NB_SAMPLES samples from $SAMPLESHEET"
 
 WORKING_DIR=$(pwd)
 # Directory to store job IDs
-JOB_DIR="$WORKING_DIR/job_ids_$$"
+JOB_DIR="$WORKING_DIR/logs/job_ids_$$"
 mkdir -p $JOB_DIR
 
 # Array to store job IDs
@@ -111,9 +111,9 @@ FINAL_SCRIPT="$JOB_DIR/final_analysis.sh"
 
 cat > "$FINAL_SCRIPT" << EOL
 #!/bin/bash
-#SBATCH --job-name=LUAD_final
-#SBATCH --output=${JOB_DIR}/LUAD_final_%j.log
-#SBATCH --error=${JOB_DIR}/LUAD_final_%j.err
+#SBATCH --job-name=merging-pipeline
+#SBATCH --output=${JOB_DIR}/merging-pipeline_%j.log
+#SBATCH --error=${JOB_DIR}/merging-pipeline_%j.err
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1

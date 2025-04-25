@@ -18,13 +18,15 @@ if (length(args) < 1) {
   stop("Error: Please provide the output directory as an argument.")
 }
 base_path <- args[1]
-
+base_path <- file.path(base_path, "samples")
 
 # Function to safely read a CSV file, returning NA if file doesn't exist or has issues
 safe_read_csv <- function(file_path) {
   tryCatch({
     if (file.exists(file_path)) {
       df <- read_csv(file_path, show_col_types = FALSE)
+      df$sample <- as.character(df$sample)
+
       return(df)
     } else {
       message(paste("File not found:", file_path))
@@ -35,10 +37,8 @@ safe_read_csv <- function(file_path) {
     return(NULL)
   })
 }
-message(base_path)
 # Get all subdirectories in the base path
 sample_dirs <- list.dirs(base_path, full.names = TRUE, recursive = FALSE)
-message(sample_dirs)
 message(paste("Found", length(sample_dirs), "sample directories"))
 
 # Process each sample directory
@@ -47,17 +47,15 @@ successful_samples <- 0
 failed_samples <- 0
 
 for (dir_path in sample_dirs) {
-  message(dir_path)
   sample_id <- basename(dir_path)
-  message(file.path(dir_path, "output", "metrics.csv"))
   metrics_file <- file.path(dir_path, "output", "metrics.csv")
   
   metrics_df <- safe_read_csv(metrics_file)
   
   if (!is.null(metrics_df)) {
     # Add the sample ID if it's not already included
-    if (!"sample_id" %in% colnames(metrics_df)) {
-      metrics_df$sample_id <- sample_id
+    if (!"sample" %in% colnames(metrics_df)) {
+      metrics_df$sample <- sample_id
     }
     
     # Append to the master dataframe
@@ -194,8 +192,8 @@ if (nrow(all_metrics) > 0) {
             <td>", row["sample"], "</td>
             <td>", row["status"], "</td>
             <td>", row["step"], "</td>
-            <td>", row["median.features"], "</td>
-            <td>", row["median.counts"], "</td>
+            <td>", row["cell.count.postdoublet"], "</td>
+            <td>", row["percent.doublets"], "</td>
             <td>", row["runtime"], "</td>
           </tr>")
         }), collapse = ""),

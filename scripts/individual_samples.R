@@ -3,6 +3,7 @@ suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
+options(future.globals.maxSize = 70 * 1024^3)
 
 # Create argument parser
 parser <- ArgumentParser(description="Run single-cell RNA Analysis")
@@ -80,23 +81,23 @@ sample.path <- samplesheet$path[samplesheet$sampleName == sample]
 message(samplesheet)
 message(sample, sample.path)
 log$sample <- sample
-
+params$sample <- sample
 
 # Load helper functions
-source("/gpfs/data/tsirigoslab/home/cather01/projects/LUAD/code/utils/seurat_function.R")
+source("scripts/functions.R")
 
 message("++++++++ Setting directories ++++++++++")
 
 # Create output directories
 setup_directories <- function(sample, params) {
   dirs <- list()
-  dirs$sample.dir <- file.path(params$output, sample)
+  dirs$sample.dir <- file.path(params$output, "samples", sample)
   dirs$data.dir <- file.path(dirs$sample.dir, "data")
   dirs$cellranger <- file.path(dirs$data.dir, "cellranger-outs")
   dirs$raw.dir <- file.path(dirs$cellranger, "raw")
   dirs$filtered.dir <- file.path(dirs$cellranger, "filtered")
-  dirs$processed.dir <- file.path(dirs$data.dir, "processed")
   dirs$output <- file.path(dirs$sample.dir, "output")
+  dirs$processed.dir <- file.path(dirs$output, "RDS-files")
   dirs$plot.dir <- file.path(dirs$output, "plots")
   
   for (dir in c(dirs$raw.dir, dirs$processed.dir, dirs$filtered.dir, dirs$plot.dir)) {
@@ -146,15 +147,15 @@ run_init <- function(samplesheet, sample, sample.path, dirs, log) {
 }
 
 # Function to process ambient RNA
-run_ambient <- function(dirs, sample.path, type.sequencing, log) {
+run_ambient <- function(dirs, sample.path, params, log) {
   message("Processing ambient RNA")
   
-  if (type.sequencing == "snRNA") {
+  if (params$type.sequencing == "snRNA") {
     message("Estimating ambient RNA based on mitochondrial contamination")
-    r <- filter_ambient_RNA_sn(sample.path)
+    r <- filter_ambient_RNA_sn(sample.path, params, dirs$plot.dir)
   } else if (exists("filter_ambient_RNA")) {
     message("Estimating ambient RNA using default automatic estimation of the contamination")
-    r <- filter_ambient_RNA(sample.path)
+    r <- filter_ambient_RNA(sample.path, params, dirs$plot.dir)
   } else {
     message("Ambient RNA filtering functions not found, reading counts directly")
     r <- list(Read10X(data.dir = dirs$filtered.dir), NA)
@@ -405,7 +406,7 @@ run_visualization <- function(seu, params, dirs, sample, log) {
   DefaultAssay(seu) <- "SCT"
   print(seu)
   
-  pdf(file.path(dirs$plot.dir, paste0(params$project.prefix, "_", sample, "_markers.pdf")))
+  pdf(file.path(dirs$plot.dir, paste0(params$project.prefix, "_", sample, "_markers.pdf")), , width = 14, height = 10)
   
   # UMAP colored by clusters
   p1 <- DimPlot(seu, reduction = "umap", label = TRUE) + 
@@ -453,7 +454,7 @@ main <- function() {
     
     if ("ambient" %in% pipeline.to.run) {
       message("\n\n++++++++ ambient ++++++++++")
-      result <- run_ambient(dirs, sample.path, params$type.sequencing, log)
+      result <- run_ambient(dirs, sample.path, params, log)
       counts <- result$counts
       log <- result$log
     } else {
