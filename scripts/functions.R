@@ -157,7 +157,7 @@ safe_create_seurat_linear <- function(counts, min.cells = 3, project = "LUAD", V
 #'
 #' @return A filtered SeuratObject with outliers removed.
 #' @export
-filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 5) {
+filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 3) {
   outliers <- isOutlier(data@meta.data[[metric]], nmads = nmads, log = log.transform)
   outlier.col <- paste0("outlier_", metric)
   data[[outlier.col]] <- outliers
@@ -177,7 +177,7 @@ filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 5) {
 #'
 #' @return A filtered SeuratObject with mitochondrial outliers removed.
 #' @export
-filter_outliers_mt_snRNA <- function(data, metric, nmads = 5){
+filter_outliers_mt_snRNA <- function(data, metric, nmads = 3){
   data$outlier_percent.mt <- isOutlier(data$percent.mt, type = "higher", min.diff = 0.5, nmads = nmads)
   expr <- FetchData(object = data, vars = "outlier_percent.mt")
   data <- data[, which(x = expr == F)]
