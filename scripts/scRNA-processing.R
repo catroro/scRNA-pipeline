@@ -259,7 +259,7 @@ run_integration <- function(seu, params, dirs) {
 }
 
 # Function to run annotation
-run_annotation <- function(seu, params, out.path) {
+run_annotation <- function(seu, params, dirs) {
   message("Running cell type annotation...")
   if (!file.exists(params$reference)) {
     warning("Reference file not found. Skipping annotation step.")
