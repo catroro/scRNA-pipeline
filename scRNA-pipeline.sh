@@ -114,7 +114,7 @@ cat > "$FINAL_SCRIPT" << EOL
 #SBATCH --job-name=merging-pipeline
 #SBATCH --output=${JOB_DIR}/merging-pipeline_%j.log
 #SBATCH --error=${JOB_DIR}/merging-pipeline_%j.err
-#SBATCH --time=24:00:00
+#SBATCH --time=48:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1
 #SBATCH --partition=fn_long,fn_medium,gpu8_medium,gpu8_long
