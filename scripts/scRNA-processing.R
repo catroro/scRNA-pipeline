@@ -203,8 +203,8 @@ run_processing <- function(seu, params, dirs) {
          RunUMAP(dims = 1:params$n.dim, reduction = "pca", reduction.name = "UMAP", verbose = F)
   
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-non-integrated.pdf")))
-    p <- DimPlot(seu, group.by = "unintegrated_clusters")
-    p2 <- DimPlot(seu, group.by = "sample")
+    p <- DimPlot(seu, group.by = "unintegrated_clusters") + NoLegend()
+    p2 <- DimPlot(seu, group.by = "sample") + NoLegend()
     print(p)
     print(p2)
   dev.off()
