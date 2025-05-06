@@ -25,7 +25,7 @@ set_defaults <- function(params) {
     variable.features.n = 5000,
     n.dim = 30,
     n.dim.integration = 40,
-    cluster_resolutions = c(0.1, 0.2, 0.3),
+    resolution = c(0.001, 0.01, 0.1, 0.2),
     integration = "CCA",
     ref.metadata.col = "cell_type",
     RDS.file = FALSE
@@ -227,7 +227,7 @@ run_integration <- function(seu, params, dirs) {
                           new.reduction = "integrated", verbose = F)
     message("\t - Re processed: Clusters > UMAP")
     seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
-           FindClusters(cluster.name = "integrated_", res = c(0.001, 0.01, 0.1, 0.2), graph.name = "integrated_snn", verbose = F) %>% 
+           FindClusters(cluster.name = paste0("integrated_", resolution), res = resolution, graph.name = "integrated_snn", verbose = F) %>% 
            RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   } else {
@@ -243,13 +243,13 @@ run_integration <- function(seu, params, dirs) {
     }
     message("\t - Re processed: Clusters > UMAP")
     seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
-           FindClusters(cluster.name = "integrated_", res = c(0.001, 0.01, 0.1, 0.2), graph.name = "integrated_snn", verbose = F) %>% 
+           FindClusters(cluster.name = paste0("integrated_",resolution), res = resolution, graph.name = "integrated_snn", verbose = F) %>% 
            RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   }
 
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-integrated.pdf")))
-    p <- DimPlot(seu, group.by = "integrated_0.01", reduction = "UMAP_integrated")
+    p <- DimPlot(seu, group.by = paste0("integrated_", resolution[[1]]), reduction = "UMAP_integrated")
     p2 <- DimPlot(seu, group.by = "sample", reduction = "UMAP_integrated")
     print(p)
     print(p2)
