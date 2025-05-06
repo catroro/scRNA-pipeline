@@ -403,7 +403,8 @@ run_visualization <- function(seu, params, dirs, sample, log) {
   # Check which markers are present in the dataset
   valid.markers <- marker.genes[marker.genes %in% rownames(seu)]
   log$markers.found <- length(valid.markers)
-  DefaultAssay(seu) <- "SCT"
+  
+  DefaultAssay(seu) <- ifelse(params$normalization == "SCT", "SCT", "RNA")
   print(seu)
   
   pdf(file.path(dirs$plot.dir, paste0(params$project.prefix, "_", sample, "_markers.pdf")), , width = 14, height = 10)
