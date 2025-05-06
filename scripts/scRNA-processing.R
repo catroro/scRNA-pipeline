@@ -58,6 +58,7 @@ if("full" %in% pipeline.to.run){
   pipeline.to.run <- c("filter", "merge", "qc", "processing", "integration", "annotation")
 }
 
+
 # Function to run filtering step
 run_filter <- function(in.path, dirs, params) {
   metrics.file <- read.csv(file.path(in.path, "qc_metrics.csv"))
@@ -224,8 +225,8 @@ run_integration <- function(seu, params, dirs) {
                           orig.reduction = "pca", method = paste0(params$integration,"Integration"), 
                           new.reduction = "integrated", verbose = F)
     message("\t - Re processed: Clusters > UMAP")
-    seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated") %>%  
-           FindClusters(cluster.name = "integrated_clusters", verbose = F) %>% 
+    seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
+           FindClusters(cluster.name = "integrated_", res = c(0.001, 0.01, 0.1, 0.2), graph.name = "integrated_snn", verbose = F) %>% 
            RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   } else {
@@ -240,9 +241,9 @@ run_integration <- function(seu, params, dirs) {
                             verbose = FALSE)
     }
     message("\t - Re processed: Clusters > UMAP")
-    seu <- FindNeighbors(seu, reduction = "integrated", dims = 1:params$n.dim.integration) %>% 
-           FindClusters(cluster.name = "integrated_clusters", resolution = params$cluster_resolutions) %>%
-           RunUMAP(reduction = "integrated", dims = 1:params$n.dim.integration, 
+    seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
+           FindClusters(cluster.name = "integrated_", res = c(0.001, 0.01, 0.1, 0.2), graph.name = "integrated_snn", verbose = F) %>% 
+           RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   }
 
@@ -332,7 +333,17 @@ main <- function() {
   # Initialize objects
   seurat.list <- NULL
   seu <- NULL
-  
+  if ("full" %in% pipeline.to.run || "filter" %in% pipeline.to.run) {
+    if (!isFALSE(params$RDS.file)) {
+      stop("ERROR: You gave an RDS to read but also want the pipeline to create the object. Please choose one.")
+    }
+  }
+
+  if (params$RDS.file != FALSE){
+        message("\n\n++++++++ reading RDS file ++++++++++")
+        seu <- readRDS(params$RDS.file)
+  }
+
   # Run pipeline steps based on user selection
   if("filter" %in% pipeline.to.run) {
     message("\n\n++++++++ Loading data and filtering samples ++++++++++")
@@ -373,7 +384,7 @@ main <- function() {
   
 
   
-   message("Analysis complete. Final object saved in", out.path)
+   message("Analysis complete. Final object saved in ", out.path)
 }
 
 # Execute main function
