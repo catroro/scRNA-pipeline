@@ -27,7 +27,8 @@ set_defaults <- function(params) {
     n.dim.integration = 40,
     cluster_resolutions = c(0.1, 0.2, 0.3),
     integration = "CCA",
-    ref.metadata.col = "cell_type"
+    ref.metadata.col = "cell_type",
+    RDS.file = FALSE
   )
   
   # For each default parameter, check if it exists in params
