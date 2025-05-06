@@ -144,7 +144,6 @@ date
 echo "Completed final analysis"
 
 # Cleanup
-rm -rf $JOB_DIR
 EOL
 
 chmod +x "$FINAL_SCRIPT"
