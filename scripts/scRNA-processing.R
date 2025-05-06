@@ -248,7 +248,7 @@ run_integration <- function(seu, params, dirs) {
   }
 
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-integrated.pdf")))
-    p <- DimPlot(seu, group.by = "integrated_clusters", reduction = "UMAP_integrated")
+    p <- DimPlot(seu, group.by = "integrated_0.01", reduction = "UMAP_integrated")
     p2 <- DimPlot(seu, group.by = "sample", reduction = "UMAP_integrated")
     print(p)
     print(p2)
