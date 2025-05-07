@@ -227,7 +227,7 @@ run_integration <- function(seu, params, dirs) {
                           new.reduction = "integrated", verbose = F)
     message("\t - Re processed: Clusters > UMAP")
     seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
-           FindClusters(cluster.name = paste0("integrated_", resolution), res = resolution, graph.name = "integrated_snn", verbose = F) %>% 
+           FindClusters(cluster.name = paste0("integrated_", params$resolution), res = params$resolution, graph.name = "integrated_snn", verbose = F) %>% 
            RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   } else {
@@ -243,14 +243,14 @@ run_integration <- function(seu, params, dirs) {
     }
     message("\t - Re processed: Clusters > UMAP")
     seu <- FindNeighbors(seu, dims = 1:params$n.dim, reduction = "integrated", graph.name = c("integrated_nn", "integrated_snn")) %>%  
-           FindClusters(cluster.name = paste0("integrated_",resolution), res = resolution, graph.name = "integrated_snn", verbose = F) %>% 
+           FindClusters(cluster.name = paste0("integrated_", params$resolution), res = params$resolution, graph.name = "integrated_snn", verbose = F) %>% 
            RunUMAP(reduction = "integrated", dims = 1:params$n.dim, verbose = FALSE, 
                   reduction.name = "UMAP_integrated")
   }
 
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-integrated.pdf")))
-    p <- DimPlot(seu, group.by = paste0("integrated_", resolution[[1]]), reduction = "UMAP_integrated")
-    p2 <- DimPlot(seu, group.by = "sample", reduction = "UMAP_integrated")
+    p <- DimPlot(seu, group.by = paste0("integrated_", params$resolution[[1]]), reduction = "UMAP_integrated")
+    p2 <- DimPlot(seu, group.by = "sample", reduction = "UMAP_integrated") + NoLegend()
     print(p)
     print(p2)
   dev.off()
