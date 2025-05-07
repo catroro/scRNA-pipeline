@@ -3,6 +3,8 @@ suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(argparse))
 suppressPackageStartupMessages(library(Seurat))
 suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(harmony))
+
 options(future.globals.maxSize = 70 * 1024^3)
 
 # Create argument parser
