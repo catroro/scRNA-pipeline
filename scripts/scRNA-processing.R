@@ -65,7 +65,7 @@ if("full" %in% pipeline.to.run){
   pipeline.to.run <- c("load", "merge", "qc", "processing", "integration", "annotation")
 }
 
-message("\nSteps that are will run:\n", paste("-", pipeline.to.run , collapse = "\n"))
+message("\nSteps that will run:\n", paste("-", pipeline.to.run , collapse = "\n"))
 
 
 # Function to run filtering step
