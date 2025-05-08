@@ -70,8 +70,8 @@ for ((n=2; n<=NB_SAMPLES+1; n++)); do
     cat > "$TEMP_SCRIPT" << EOL
 #!/bin/bash
 #SBATCH --job-name=${SAMPLE}_${JOB_INDEX}
-#SBATCH --output=${JOB_DIR}/j${JOB_INDEX}_${SAMPLE}_%j.log
-#SBATCH --error=${JOB_DIR}/j${JOB_INDEX}_${SAMPLE}_%j.err
+#SBATCH --output=${JOB_DIR}/${SAMPLE}_J${JOB_INDEX}_%j.log
+#SBATCH --error=${JOB_DIR}/${SAMPLE}_J${JOB_INDEX}_%j.err
 #SBATCH --time=24:00:00
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=1

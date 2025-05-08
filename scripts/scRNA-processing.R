@@ -27,10 +27,12 @@ set_defaults <- function(params) {
     variable.features.n = 5000,
     n.dim = 30,
     n.dim.integration = 40,
-    resolution = c(0.001, 0.01, 0.1, 0.2),
+    resolution = c(0.01, 0.1, 0.2),
     integration = "CCA",
     ref.metadata.col = "cell_type",
-    RDS.file = FALSE
+    RDS.file = FALSE,
+    group.var = "sample",
+    postqc = FALSE
   )
   
   # For each default parameter, check if it exists in params
@@ -55,15 +57,19 @@ params <- set_defaults(params)
     }
   }
 
+message("Parameters used in this analysis:\n", paste0(" - ", names(params), " = ", params, collapse = "\n"))
+
 # Parse pipeline steps to run
 pipeline.to.run <- unlist(strsplit(params$pipeline, split = ","))
 if("full" %in% pipeline.to.run){
-  pipeline.to.run <- c("filter", "merge", "qc", "processing", "integration", "annotation")
+  pipeline.to.run <- c("load", "merge", "qc", "processing", "integration", "annotation")
 }
+
+message("\nSteps that are will run:\n", paste("-", pipeline.to.run , collapse = "\n"))
 
 
 # Function to run filtering step
-run_filter <- function(in.path, dirs, params) {
+run_load <- function(in.path, dirs, params) {
   metrics.file <- read.csv(file.path(in.path, "qc_metrics.csv"))
   samples.id <- as.character(metrics.file[metrics.file$cell.count.postfilter > params$min_cells & 
                          metrics.file$status == "completed", "sample"])
@@ -85,10 +91,11 @@ run_filter <- function(in.path, dirs, params) {
     obj$sample <- sample
     return(obj)
   })
-  
+
   saveRDS(seurat.list, file = file.path(dirs$RDS.files, 
                                paste0(params$project.prefix, "-create-obj-list.RDS")))
-  message("filtering done.")
+
+  message("loading done.")
   return(seurat.list)
 }
 
@@ -97,7 +104,8 @@ run_merge <- function(seurat.list, dirs) {
   message("Merging samples...")
   first.obj <- seurat.list[[1]]
   remaining.objs <- seurat.list[-1]
-  seu <- merge(first.obj, y = remaining.objs, project = "LUAD")
+  seu <- merge(first.obj, y = remaining.objs, project = params$project.prefix)
+  seu$project <- params$project.prefix
   saveRDS(seu, file = file.path(dirs$RDS.files, 
                                paste0(params$project.prefix, "-merged-obj.RDS")))
   message("merging done.")
@@ -108,7 +116,7 @@ run_qc <- function(seu, params, dirs){
   message("QC...")
   # Join layers if necessary
   joined.seu <- if ("counts" %in% Layers(seu)) JoinLayers(seu) else seu
-  Idents(joined.seu) <- "sample"
+  Idents(joined.seu) <- "project"
   
   # Pre-QC visualization
   p1 <- VlnPlot(joined.seu, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
@@ -117,34 +125,34 @@ run_qc <- function(seu, params, dirs){
   ncells <- joined.seu@meta.data %>%
     group_by(sample) %>%
     summarize(n_cells = n())
-  message("Number of cells per samples pre QC: \n", ncells)
+  # message("Number of cells per samples pre QC: \n", ncells)
   
-  # Filter outliers
-  joined.seu <- filter_outliers(joined.seu, metric = "nFeature_RNA", nmads = 3, log.transform = TRUE)
-  joined.seu <- filter_outliers(joined.seu, metric = "nCount_RNA", nmads = 3, log.transform = TRUE)
-  joined.seu <- filter_outliers(joined.seu, metric = "percent.mt", nmads = 3, log.transform = FALSE)
-  
-  # Post-QC cell counts
-  ncells <- joined.seu@meta.data %>%
-    group_by(sample) %>%
-    summarize(n_cells = n())
-  message("Number of cells per samples post QC: \n", ncells)
-  
-  # Post-QC visualization
-  Idents(joined.seu) <- "sample"
-  p2 <- VlnPlot(joined.seu, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
-  
+  if(params$postqc){
+    # Filter outliers
+    joined.seu <- filter_outliers(joined.seu, metric = "nFeature_RNA", nmads = 3, log.transform = TRUE)
+    joined.seu <- filter_outliers(joined.seu, metric = "nCount_RNA", nmads = 3, log.transform = TRUE)
+    joined.seu <- filter_outliers(joined.seu, metric = "percent.mt", nmads = 3, log.transform = FALSE)
+    
+    # Post-QC cell counts
+    ncells <- joined.seu@meta.data %>%
+      group_by(sample) %>%
+      summarize(n_cells = n())
+    message("Number of cells per samples post QC: \n", ncells)
+    
+    # Post-QC visualization
+    Idents(joined.seu) <- "project"
+    p2 <- VlnPlot(joined.seu, features = c("nFeature_RNA", "nCount_RNA", "percent.mt"), ncol = 3)
+  }
   # Save QC plots
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-qc.pdf")))
-  print(p1)
-  print(p2)
+    print(p1)
+    if(params$postqc){ print(p2) }
   dev.off()
   
   # Save QC'd object
   saveRDS(joined.seu, file = file.path(dirs$RDS.files,
-                                      paste0(params$project.prefix, "-postqc-obj.RDS")))
+                                      paste0(params$project.prefix, "-qc-obj.RDS")))
   
-  # Here's the key fix: Use joined.seu, not data in the subset
   seu <- subset(seu, cells = colnames(joined.seu))
   
   message("qc done.")
@@ -203,15 +211,24 @@ run_processing <- function(seu, params, dirs) {
   message("\t - Running PCA > Clusters > UMAP")
   seu <- RunPCA(seu, verbose = F) %>% 
          FindNeighbors(dims = 1:params$n.dim, reduction = "pca", verbose = F) %>%  
-         FindClusters(cluster.name = "unintegrated_clusters", verbose = F) %>% 
+         FindClusters(cluster.name = paste0("non-integrated-", params$resolution), res = params$resolution, verbose = F) %>% 
          RunUMAP(dims = 1:params$n.dim, reduction = "pca", reduction.name = "UMAP", verbose = F)
   
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-non-integrated.pdf")))
-    p <- DimPlot(seu, group.by = "unintegrated_clusters") + NoLegend()
+    p <- DimPlot(seu, group.by = paste0("non-integrated-", params$resolution[[1]])) + NoLegend()
     p2 <- DimPlot(seu, group.by = "sample") + NoLegend()
     print(p)
     print(p2)
   dev.off()
+  if(params$normalization != "SCT"){ 
+  message("\t - Joining layers ")
+
+  seu <- JoinLayers(seu)
+  seu <- NormalizeData(seu, verbose = F) %>%
+       FindVariableFeatures(verbose = F) %>%
+       ScaleData(verbose = F) %>%
+       RunPCA(reduction.name = "pca_joined", verbose = F)
+  }
 
   saveRDS(seu, file = file.path(dirs$RDS.files, 
                                paste0(params$project.prefix, "-processed-obj.RDS")))
@@ -224,6 +241,7 @@ run_integration <- function(seu, params, dirs) {
   message("Running integration...")
   if(params$normalization == "SCT") {
     message("\t - Integrate Layers w/: ", params$integration)
+    seu[['RNA']] <- split(seu[['RNA']], f = seu[[params$group.var]])
     seu <- IntegrateLayers(object = seu, normalization.method = params$normalization, 
                           orig.reduction = "pca", method = paste0(params$integration,"Integration"), 
                           new.reduction = "integrated", verbose = F)
@@ -235,10 +253,12 @@ run_integration <- function(seu, params, dirs) {
   } else {
     if(params$integration == "Harmony") {
       message("\t - Run Harmony integration")
-      seu <- RunHarmony(seu, group.by.vars = "sample", reduction.save = "integrated")
+      reduction.to.use <- ifelse("pca_joined" %in% names(seu@reductions), "pca_joined", "pca")
+      message("\t reduction used: ", reduction.to.use)
+      seu <- RunHarmony(seu, group.by.vars = params$group.var,  reduction = reduction.to.use, reduction.save = "integrated")
     } else {
       message("\t - Run ",  params$integration, " integration")
-      seu[['RNA']] <- split(seu[['RNA']], seu$sample)
+      seu[['RNA']] <- split(seu[['RNA']], f = seu[[params$group.var]])
       seu <- IntegrateLayers(object = seu, method = params$integration, 
                             orig.reduction = "pca", new.reduction = "integrated", 
                             verbose = FALSE)
@@ -252,7 +272,7 @@ run_integration <- function(seu, params, dirs) {
 
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-integrated.pdf")))
     p <- DimPlot(seu, group.by = paste0("integrated_", params$resolution[[1]]), reduction = "UMAP_integrated")
-    p2 <- DimPlot(seu, group.by = "sample", reduction = "UMAP_integrated") + NoLegend()
+    p2 <- DimPlot(seu, group.by = params$group.var, reduction = "UMAP_integrated") + NoLegend()
     print(p)
     print(p2)
   dev.off()
@@ -270,6 +290,7 @@ run_annotation <- function(seu, params, dirs) {
     return(seu)
   }
 
+  message("\tReading reference file: ", params$reference)
   ref <- readRDS(params$reference)
   
   # Handle normalization types for reference mapping
@@ -280,19 +301,19 @@ run_annotation <- function(seu, params, dirs) {
       DefaultAssay(seu) <- "RNA"
       seu <- JoinLayers(seu)
       seu <- NormalizeData(seu)
-      seu <- find_and_transfer_labels(ref, seu, out.path, ref.metadata.col = params$ref.metadata.col)
+      seu <- find_and_transfer_labels(ref, seu, dirs$RDS.files, ref.metadata.col = params$ref.metadata.col)
     } else {
-      seu <- find_and_transfer_labels(seu, ref, out.path, ref.metadata.col = params$ref.metadata.col, 
+      seu <- find_and_transfer_labels(ref, seu, dirs$RDS.files, ref.metadata.col = params$ref.metadata.col, 
                                     normalization = "SCT") 
     }
   } else {
     if("SCT" %in% SeuratObject::Assays(ref)) {
       message("\t- Different normalization between reference and query - need to normalize the query again")
       seu.sct <- SCTransform(seu, verbose = F)
-      seu <- find_and_transfer_labels(ref, seu.sct, out.path, ref.metadata.col = params$ref.metadata.col, 
+      seu <- find_and_transfer_labels(ref, seu.sct, dirs$RDS.files, ref.metadata.col = params$ref.metadata.col, 
                                     normalization = "SCT")
     } else {
-      seu <- find_and_transfer_labels(seu, ref, out.path, ref.metadata.col = params$ref.metadata.col)
+      seu <- find_and_transfer_labels(ref, seu, dirs$RDS.files, ref.metadata.col = params$ref.metadata.col)
     }
   }
   
@@ -336,7 +357,7 @@ main <- function() {
   # Initialize objects
   seurat.list <- NULL
   seu <- NULL
-  if ("full" %in% pipeline.to.run || "filter" %in% pipeline.to.run) {
+  if ("full" %in% pipeline.to.run || "load" %in% pipeline.to.run) {
     if (!isFALSE(params$RDS.file)) {
       stop("ERROR: You gave an RDS to read but also want the pipeline to create the object. Please choose one.")
     }
@@ -348,17 +369,17 @@ main <- function() {
   }
 
   # Run pipeline steps based on user selection
-  if("filter" %in% pipeline.to.run) {
+  if("load" %in% pipeline.to.run) {
     message("\n\n++++++++ Loading data and filtering samples ++++++++++")
-    seurat.list <- run_filter(in.path, dirs, params)
+    seu <- run_load(in.path, dirs, params)
   }
   
-  if("merge" %in% pipeline.to.run && !is.null(seurat.list)) {
+  if("merge" %in% pipeline.to.run && !is.null(seu)) {
     message("\n\n++++++++ Merging ++++++++++")
-    seu <- run_merge(seurat.list, dirs)
+    seu <- run_merge(seu, dirs)
   }
   
-  if("qc" %in% pipeline.to.run && !is.null(seurat.list)) {
+  if("qc" %in% pipeline.to.run && !is.null(seu)) {
     message("\n\n++++++++ QC ++++++++++")
     seu <- run_qc(seu, params, dirs)
   }
