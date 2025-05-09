@@ -162,10 +162,18 @@ filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 3) {
   outlier.col <- paste0("outlier_", metric)
   data[[outlier.col]] <- outliers
   expr <- FetchData(object = data, vars = outlier.col)
-  data <- data[, which(x = expr == F)]
+  data <- data[, which(expr == FALSE)]
+
+  if (metric == "percent.mt") {
+    data <- subset(data, subset = percent.mt < 20)
+  } else if (metric == "nFeature_RNA") {
+    data <- subset(data, subset = nFeature_RNA > 100 & nFeature_RNA < 7500)
+  } else if (metric == "nCount_RNA") {
+    data <- subset(data, subset = nCount_RNA > 200 & nCount_RNA < 50000)
+  }
+
   return(data)
 }
-
 
 #' Filter mitochondrial outliers in single nuclei data
 #'
@@ -181,6 +189,10 @@ filter_outliers_mt_snRNA <- function(data, metric, nmads = 3){
   data$outlier_percent.mt <- isOutlier(data$percent.mt, type = "higher", min.diff = 0.5, nmads = nmads)
   expr <- FetchData(object = data, vars = "outlier_percent.mt")
   data <- data[, which(x = expr == F)]
+
+  #Add a threshold if the distribution is really high, isOutlier might keep to much 
+  data <- subset(data, subset = percent.mt < 5)
+
   return(data)
 }
 
