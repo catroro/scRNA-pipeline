@@ -157,7 +157,7 @@ safe_create_seurat_linear <- function(counts, min.cells = 3, project = "LUAD", V
 #'
 #' @return A filtered SeuratObject with outliers removed.
 #' @export
-filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 3) {
+filter_outliers <- function(data, metric, max.nFeature_RNA = 7500, min.nFeature_RNA = 100, max.nCount_RNA = 50000, min.nCount_RNA = 200, max.percent.mt = 20, log.transform = FALSE, nmads = 3) {
   outliers <- isOutlier(data@meta.data[[metric]], nmads = nmads, log = log.transform)
   outlier.col <- paste0("outlier_", metric)
   data[[outlier.col]] <- outliers
@@ -165,11 +165,11 @@ filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 3) {
   data <- data[, which(expr == FALSE)]
 
   if (metric == "percent.mt") {
-    data <- subset(data, subset = percent.mt < 20)
+    data <- subset(data, subset = percent.mt < max.percent.mt)
   } else if (metric == "nFeature_RNA") {
-    data <- subset(data, subset = nFeature_RNA > 100 & nFeature_RNA < 7500)
+    data <- subset(data, subset = nFeature_RNA > min.nFeature_RNA & nFeature_RNA < max.nFeature_RNA)
   } else if (metric == "nCount_RNA") {
-    data <- subset(data, subset = nCount_RNA > 200 & nCount_RNA < 50000)
+    data <- subset(data, subset = nCount_RNA > min.nCount_RNA & nCount_RNA < max.nCount_RNA)
   }
 
   return(data)
@@ -185,13 +185,13 @@ filter_outliers <- function(data, metric, log.transform = FALSE, nmads = 3) {
 #'
 #' @return A filtered SeuratObject with mitochondrial outliers removed.
 #' @export
-filter_outliers_mt_snRNA <- function(data, metric, nmads = 3){
+filter_outliers_mt_snRNA <- function(data, metric, nmads = 3, max.percent.mt = 5){
   data$outlier_percent.mt <- isOutlier(data$percent.mt, type = "higher", min.diff = 0.5, nmads = nmads)
   expr <- FetchData(object = data, vars = "outlier_percent.mt")
   data <- data[, which(x = expr == F)]
 
   #Add a threshold if the distribution is really high, isOutlier might keep to much 
-  data <- subset(data, subset = percent.mt < 5)
+  data <- subset(data, subset = percent.mt < max.percent.mt)
 
   return(data)
 }

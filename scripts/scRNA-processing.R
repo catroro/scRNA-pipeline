@@ -24,15 +24,15 @@ set_defaults <- function(params) {
     normalization = "SCT",
     var.to.regress = NULL,
     cc = FALSE,
-    variable.features.n = 5000,
+    variable.features.n = 2000,
     n.dim = 30,
-    n.dim.integration = 40,
     resolution = c(0.01, 0.1, 0.2),
     integration = "CCA",
     ref.metadata.col = "cell_type",
     RDS.file = FALSE,
     group.var = "sample",
-    postqc = FALSE
+    postqc = FALSE,
+    samples.to.remove = NULL
   )
   
   # For each default parameter, check if it exists in params
@@ -67,13 +67,23 @@ if("full" %in% pipeline.to.run){
 
 message("\nSteps that will run:\n", paste("-", pipeline.to.run , collapse = "\n"))
 
-
 # Function to run filtering step
 run_load <- function(in.path, dirs, params) {
   metrics.file <- read.csv(file.path(in.path, "qc_metrics.csv"))
   samples.id <- as.character(metrics.file[metrics.file$cell.count.postfilter > params$min_cells & 
                          metrics.file$status == "completed", "sample"])
   
+  if (!is.null(params$samples.to.remove)) {
+    message("\n\tFiltering samples to remove..")
+
+    # Intersect to find matching samples
+    matching.samples <- intersect(samples.id, params$samples.to.remove)
+    message("\t- removing sample that has been found: ", matching.samples)
+    if (length(matching.samples) > 0) {
+      samples.id <- setdiff(samples.id, matching.samples)
+    }
+  }
+
   message(paste("Processing", length(samples.id), "samples"))
   sample.dirs <- file.path(in.path, samples.id)
   
@@ -211,11 +221,11 @@ run_processing <- function(seu, params, dirs) {
   message("\t - Running PCA > Clusters > UMAP")
   seu <- RunPCA(seu, verbose = F) %>% 
          FindNeighbors(dims = 1:params$n.dim, reduction = "pca", verbose = F) %>%  
-         FindClusters(cluster.name = paste0("non-integrated-", params$resolution), res = params$resolution, verbose = F) %>% 
+         FindClusters(cluster.name = paste0("non_integrated_", params$resolution), res = params$resolution, verbose = F) %>% 
          RunUMAP(dims = 1:params$n.dim, reduction = "pca", reduction.name = "UMAP", verbose = F)
   
   pdf(file.path(dirs$plots, paste0(params$project.prefix, "-umap-non-integrated.pdf")))
-    p <- DimPlot(seu, group.by = paste0("non-integrated-", params$resolution[[1]])) + NoLegend()
+    p <- DimPlot(seu, group.by = paste0("non_integrated_", params$resolution[[1]])) + NoLegend()
     p2 <- DimPlot(seu, group.by = "sample") + NoLegend()
     print(p)
     print(p2)
@@ -368,6 +378,22 @@ main <- function() {
         seu <- readRDS(params$RDS.file)
   }
 
+  if (!is.null(params$samples.to.remove)) {
+    params$samples.to.remove <- unlist(strsplit(params$samples.to.remove, ","))
+    print(params$samples.to.remove)
+    if(!("load" %in% pipeline.to.run)){
+      message("\n\tFiltering samples to remove..")
+      # Find the intersection: samples to remove that are actually in the Seurat object
+      samples.in.seu <- intersect(params$samples.to.remove, unique(seu@meta.data$sample))
+      message("\t- removing sample that has been found: ", samples.in.seu)
+
+      if (length(samples.in.seu) > 0) {
+        # Subset the Seurat object to exclude those samples
+        seu <- subset(seu, subset = sample %in% samples.in.seu, invert = T)
+      }
+    }
+  }
+  
   # Run pipeline steps based on user selection
   if("load" %in% pipeline.to.run) {
     message("\n\n++++++++ Loading data and filtering samples ++++++++++")
