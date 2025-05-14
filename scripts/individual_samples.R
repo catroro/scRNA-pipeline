@@ -31,7 +31,7 @@ set_defaults <- function(params) {
     min.nFeature_RNA = 100,
     max.nCount_RNA = 50000,
     min.nCount_RNA = 200,
-    max.percent.mt = 2
+    max.percent.mt = 20
   )
   # For each default parameter, check if it exists in params
   for (param_name in names(defaults)) {
@@ -280,12 +280,12 @@ run_filter <- function(seu, dirs, params, sample, log) {
   log$median.mt.percent.prefilter <- median(seu$percent.mt)
   seu <- filter_outliers(seu, "nFeature_RNA", min.nFeature_RNA = params$min.nFeature_RNA, max.nFeature_RNA = params$max.nFeature_RNA, log.transform = TRUE)
   seu <- filter_outliers(seu, "nCount_RNA", min.nCount_RNA = params$min.nCount_RNA, max.nCount_RNA = params$max.nCount_RNA, log.transform = TRUE)
-  seu <- filter_outliers(seu, "percent.rb", max.percent.mt = params$max.percent.mt, log.transform = FALSE)
+  # seu <- filter_outliers(seu, "percent.rb", max.percent.mt = params$max.percent.mt, log.transform = FALSE)
   
   if (params$type.sequencing == "snRNA") {
-    seu <- filter_outliers_mt_snRNA(seu, "percent.mt")
+    seu <- filter_outliers_mt_snRNA(seu, "percent.mt", max.percent.mt = params$max.percent.mt)
   } else {
-    seu <- filter_outliers(seu, "percent.mt")
+    seu <- filter_outliers(seu, "percent.mt", max.percent.mt = params$max.percent.mt)
   } 
   
   log$cell.count.postfilter <- ncol(seu)
