@@ -409,23 +409,24 @@ run_visualization <- function(seu, params, dirs, sample, log) {
   valid.markers <- marker.genes[marker.genes %in% rownames(seu)]
   log$markers.found <- length(valid.markers)
   
-  DefaultAssay(seu) <- ifelse(params$normalization == "SCT", "SCT", "RNA")
-  print(seu)
+  if (length(valid.markers) > 0) {
+    DefaultAssay(seu) <- ifelse(params$normalization == "SCT", "SCT", "RNA")
+    print(seu)
+    pdf(file.path(dirs$plot.dir, paste0(params$project.prefix, "_", sample, "_markers.pdf")), , width = 14, height = 10)
   
-  pdf(file.path(dirs$plot.dir, paste0(params$project.prefix, "_", sample, "_markers.pdf")), , width = 14, height = 10)
+      # UMAP colored by clusters
+      p1 <- DimPlot(seu, reduction = "umap", label = TRUE) + 
+        ggtitle("Clusters")
+      print(p1)
+      
+      p <- FeaturePlot(seu, features = marker.genes, ncol = min(4, length(marker.genes)))
+        print(p)
+    
+    dev.off()
+  } else {
+    message("No valid markers found in dataset — skipping FeaturePlot")
+  }
   
-  # UMAP colored by clusters
-  p1 <- DimPlot(seu, reduction = "umap", label = TRUE) + 
-    ggtitle("Clusters")
-  print(p1)
-  
-
-  
-  p <- FeaturePlot(seu, features = marker.genes, ncol = min(4, length(marker.genes)))
-    print(p)
-  
-  
-  dev.off()
 
   log$step <- "visualization"
   
