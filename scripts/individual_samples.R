@@ -209,8 +209,12 @@ run_create <- function(counts, samplesheet, sample, params, dirs, log) {
   }
   
   # Assay-specific metrics
-  seu[["percent.mt"]] <- PercentageFeatureSet(seu, pattern = "^MT-")
-  seu[["percent.rb"]] <- PercentageFeatureSet(seu, pattern = "^RP[SL]")
+  # seu[["percent.mt"]] <- PercentageFeatureSet(seu, pattern = "^MT-")
+  # ignore case since mouse are mt
+  seu[["percent.mt"]] <- PercentageFeatureSet(seu, pattern = "(?i)^mt-")
+  # seu[["percent.rb"]] <- PercentageFeatureSet(seu, pattern = "^RP[SL]")
+  seu[["percent.rb"]] <- PercentageFeatureSet(seu, pattern = "(?i)^rp[sl]")
+
   
   log$cell.count.initial <- ncol(seu)
   log$gene.count.initial <- nrow(seu)
