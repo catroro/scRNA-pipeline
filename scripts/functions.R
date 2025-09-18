@@ -95,7 +95,7 @@ filter_ambient_RNA <- function(data.path, params, plot.path, VERBOSE = T){
     pdf(file.path(plot.path,  paste0(params$project.prefix, "_", params$sample, "_qc-contamination.pdf")))
       sc <- autoEstCont(sc)
     dev.off()
-    if (VERBOSE) return(list(count = adjustCounts(sc), message = "Decontamination worked")) else return(adjustCounts(sc))
+    if (VERBOSE) return(list(count = adjustCounts(sc, roundToInt=TRUE), message = "Decontamination worked")) else return(adjustCounts(sc))
     
   }, error = function(e) {
     message("autoEstCont failed, not filtering ambient RNA")
@@ -126,7 +126,7 @@ filter_ambient_RNA_sn <- function(data.path, params, plot.path, VERBOSE = T){
   sc <- calculateContaminationFraction(sc, gene.list, useToEst = non.expressing)
   print("counts")
   pdf(file.path(plot.path,  paste0(params$project.prefix, "_", params$sample, "_qc-contamination.pdf")))
-  counts <- adjustCounts(sc)
+  counts <- adjustCounts(sc, roundToInt=TRUE)
   dev.off()
   if (VERBOSE) return(list(count = counts, message = "Decontamination mt worked")) else return(counts)
 }
